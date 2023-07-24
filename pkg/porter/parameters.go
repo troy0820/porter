@@ -24,6 +24,7 @@ import (
 	dtprinter "github.com/carolynvs/datetime-printer"
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/bundle/definition"
+	"github.com/cnabio/cnab-go/secrets/host"
 	"github.com/olekukonko/tablewriter"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -85,7 +86,11 @@ func (p *Porter) PrintParameters(ctx context.Context, opts ListOptions) error {
 		for _, ps := range params {
 			for _, param := range ps.Parameters {
 				list := []string{}
-				list = append(list, ps.Namespace, param.Name, param.Source.Strategy, param.Source.Hint, tp.Format(ps.Status.Modified))
+				hint := param.Source.Hint
+				if param.Source.Strategy == host.SourceEnv || param.Source.Strategy == secrets.SourceSecret {
+					hint = "******"
+				}
+				list = append(list, ps.Namespace, param.Name, param.Source.Strategy, hint, tp.Format(ps.Status.Modified))
 				paramsSets = append(paramsSets, list)
 			}
 		}
