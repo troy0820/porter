@@ -55,13 +55,46 @@ func (p *Porter) ListParameters(ctx context.Context, opts ListOptions) ([]Displa
 	if err != nil {
 		return nil, err
 	}
-
 	displayResults := make([]DisplayParameterSet, len(results))
-	for i, ps := range results {
-		displayResults[i] = NewDisplayParameterSet(ps)
+	paramResults := p.CreateDisplayParameterSets(results, displayResults)
+	return paramResults, nil
+}
+
+func (p *Porter) CreateDisplayParameterSets(params []storage.ParameterSet, displayResults []DisplayParameterSet) []DisplayParameterSet {
+	for i, ps := range params {
+		param := DisplayParameterSet{
+			ParameterSet: storage.ParameterSet{
+				ParameterSetSpec: storage.ParameterSetSpec{
+					SchemaType:    storage.SchemaTypeParameterSet,
+					SchemaVersion: storage.DefaultParameterSetSchemaVersion,
+					Namespace:     ps.Namespace,
+					Name:          ps.Name,
+				},
+				Status: storage.ParameterSetStatus{
+					Created:  ps.Status.Created,
+					Modified: ps.Status.Modified,
+				},
+			},
+		}
+		secretList := secrets.StrategyList{}
+		for _, name := range ps.Parameters {
+			hint := name.Source.Hint
+			if name.Source.Strategy == host.SourceEnv || name.Source.Strategy == secrets.SourceSecret {
+				hint = name.ResolvedValue
+			}
+			secretList = append(secretList, secrets.SourceMap{
+				Name: name.Name,
+				Source: secrets.Source{
+					Hint:     hint,
+					Strategy: name.Source.Strategy,
+				},
+			})
+		}
+		param.Parameters = secretList
+		displayResults[i] = param
 	}
 
-	return displayResults, nil
+	return displayResults
 }
 
 // PrintParameters prints saved parameter sets.
@@ -87,9 +120,6 @@ func (p *Porter) PrintParameters(ctx context.Context, opts ListOptions) error {
 			for _, param := range ps.Parameters {
 				list := []string{}
 				hint := param.Source.Hint
-				if param.Source.Strategy == host.SourceEnv || param.Source.Strategy == secrets.SourceSecret {
-					hint = "******"
-				}
 				list = append(list, ps.Namespace, param.Name, param.Source.Strategy, hint, tp.Format(ps.Status.Modified))
 				paramsSets = append(paramsSets, list)
 			}
