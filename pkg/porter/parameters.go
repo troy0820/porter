@@ -24,7 +24,6 @@ import (
 	dtprinter "github.com/carolynvs/datetime-printer"
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/bundle/definition"
-	"github.com/cnabio/cnab-go/secrets/host"
 	"github.com/olekukonko/tablewriter"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -55,12 +54,12 @@ func (p *Porter) ListParameters(ctx context.Context, opts ListOptions) ([]Displa
 	if err != nil {
 		return nil, err
 	}
-	displayResults := make([]DisplayParameterSet, len(results))
-	paramResults := p.CreateDisplayParameterSets(results, displayResults)
+	paramResults := p.CreateDisplayParameterSets(results)
 	return paramResults, nil
 }
 
-func (p *Porter) CreateDisplayParameterSets(params []storage.ParameterSet, displayResults []DisplayParameterSet) []DisplayParameterSet {
+func (p *Porter) CreateDisplayParameterSets(params []storage.ParameterSet) []DisplayParameterSet {
+	displayResults := make([]DisplayParameterSet, len(params))
 	for i, ps := range params {
 		param := DisplayParameterSet{
 			ParameterSet: storage.ParameterSet{
@@ -79,7 +78,7 @@ func (p *Porter) CreateDisplayParameterSets(params []storage.ParameterSet, displ
 		secretList := secrets.StrategyList{}
 		for _, name := range ps.Parameters {
 			hint := name.Source.Hint
-			if name.Source.Strategy == host.SourceEnv || name.Source.Strategy == secrets.SourceSecret {
+			if name.Source.Strategy == secrets.SourceSecret {
 				hint = name.ResolvedValue
 			}
 			secretList = append(secretList, secrets.SourceMap{

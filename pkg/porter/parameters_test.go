@@ -15,6 +15,7 @@ import (
 	"get.porter.sh/porter/tests"
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/bundle/definition"
+	"github.com/cnabio/cnab-go/secrets/host"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -704,6 +705,35 @@ func TestPrintParameters(t *testing.T) {
 	gotOutput := p.TestConfig.TestContext.GetOutput()
 	test.CompareGoldenFile(t, "testdata/parameters/mypsettable.txt", gotOutput)
 
+}
+
+func TestCreateDisplayParameters(t *testing.T) {
+	p := NewTestPorter(t)
+	defer p.Close()
+	ps := []storage.ParameterSet{
+		{
+			ParameterSetSpec: storage.ParameterSetSpec{
+				Name:      "fake-ps",
+				Namespace: "fake-ns",
+				Parameters: secrets.StrategyList{
+					{
+						Name: "fake-source",
+						Source: secrets.Source{
+							Strategy: host.SourceEnv,
+							Hint:     "fake-user",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	result := p.CreateDisplayParameterSets(ps)
+	assert.True(t, len(result) > 0)
+	assert.Equal(t, ps[0].Name, result[0].Name)
+	assert.Equal(t, ps[0].Namespace, result[0].Namespace)
+	assert.Equal(t, ps[0].Parameters[0].Name, result[0].Parameters[0].Name)
+	assert.Equal(t, ps[0].Parameters[0].Source.Hint, result[0].Parameters[0].Source.Hint)
 }
 
 func TestParametersCreateOptions_Validate(t *testing.T) {
